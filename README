@@ -1,0 +1,7 @@
+tstamp v0.0
+Alejandro Mery <amery@geeks.cl>
+
+A tool to prepend timestamps on each line from stdin.
+
+This tool is distributed under the terms of the new BSD license. See
+the COPYING file for details.
