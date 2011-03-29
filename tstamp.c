@@ -37,15 +37,16 @@ static inline void write_all(struct iovec *iov, int iovcnt)
 	}
 }
 
-static inline void dump(FILE *f)
+static inline void dump(FILE *f, /*const*/ char *del)
 {
 	char buf[MAXBUF];
-	struct iovec iov[] = { {": ",2}, {buf,0} };
+
+	struct iovec iov[] = {
+		{del, strlen(del)},
+		{buf, 0} };
 
 	while (fgets(buf, sizeof(buf), f) != NULL) {
-		size_t l = strlen(buf);
-
-		iov[1].iov_len = l;
+		iov[1].iov_len = strlen(buf);
 
 		write_all(iov, 2);
 	}
@@ -73,6 +74,6 @@ int main(int argc, char **argv)
 		}
 	}
 
-	dump(stdin);
+	dump(stdin, ": ");
 	return 0;
 }
