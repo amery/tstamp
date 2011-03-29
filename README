@@ -1,4 +1,4 @@
-tstamp v0.0
+tstamp v0.2
 Alejandro Mery <amery@geeks.cl>
 
 A tool to prepend timestamps on each line from stdin.
