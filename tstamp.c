@@ -20,6 +20,7 @@
 #include "tstamp.h"
 
 static struct tm *(*gen_tm)(const time_t *, struct tm *);
+static size_t (*fmt_tstamp)(char *, size_t);
 
 static inline void write_all(struct iovec *iov, int iovcnt)
 {
@@ -44,7 +45,7 @@ static inline void write_all(struct iovec *iov, int iovcnt)
 	}
 }
 
-static size_t fmt_tstamp(char *buf, size_t buf_len)
+static size_t fmt_tstamp_time(char *buf, size_t buf_len)
 {
 	struct timeval timeval;
 	struct tm tm;
@@ -80,8 +81,10 @@ static inline void dump(FILE *f, /*const*/ char *del)
 int main(int argc, char **argv)
 {
 	int opt;
-	gen_tm = gmtime_r;
 	char *del = ": ";
+
+	gen_tm = gmtime_r;
+	fmt_tstamp = fmt_tstamp_time;
 
 	while ((opt = getopt(argc, argv, "?Vld:")) != -1) {
 		switch (opt) {
