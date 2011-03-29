@@ -81,8 +81,9 @@ int main(int argc, char **argv)
 {
 	int opt;
 	gen_tm = gmtime_r;
+	char *del = ": ";
 
-	while ((opt = getopt(argc, argv, "?Vl")) != -1) {
+	while ((opt = getopt(argc, argv, "?Vld:")) != -1) {
 		switch (opt) {
 		case 'V':
 			fputs("tstamp v" VERSION " <" HOME ">\n"
@@ -92,17 +93,22 @@ int main(int argc, char **argv)
 			return 0;
 		case 'l':
 			gen_tm = localtime_r;
-			break ;
+			break;
+		case 'd':
+			del = optarg;
+			break;
 		default:
 			fprintf(stderr,
 				"tstamp v" VERSION "\n" DESCRIPTION "\n\n"
-				"Usage: %s [-V]\n\n"
-				"  -V   print version and exit\n",
+				"Usage: %s [-V] [-l] [-d <del>]\n\n"
+				"  -V   print version and exit\n"
+				"  -d   delimiter (default: \": \")\n"
+				"  -l   use localtime instead of GMT/UTC/Z\n",
 				argv[0]);
 			return 1;
 		}
 	}
 
-	dump(stdin, ": ");
+	dump(stdin, del);
 	return 0;
 }
