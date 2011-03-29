@@ -7,4 +7,10 @@
 #ifndef _TSTAMP_H
 #define _TSTAMP_H
 
+#define	VERSION	"0.0"
+#define HOME	"http://github.com/amery/tstamp"
+#define DESCRIPTION	"A tool to prepend timestamps"
+
+#define MAXBUF	128
+
 #endif
