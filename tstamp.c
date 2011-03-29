@@ -4,11 +4,16 @@
  * All rights reserved. See COPYING for details.
  ***/
 
+#define _POSIX_SOURCE
+
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
 #include <getopt.h>
 #include <errno.h>
+
+#include <time.h>
+#include <sys/time.h>
 
 #include <sys/uio.h>
 
@@ -37,18 +42,36 @@ static inline void write_all(struct iovec *iov, int iovcnt)
 	}
 }
 
+static size_t fmt_tstamp(char *buf, size_t buf_len)
+{
+	struct timeval timeval;
+	struct tm tm;
+
+	gettimeofday(&timeval, NULL);
+	localtime_r(&timeval.tv_sec, &tm);
+
+	return snprintf(buf, buf_len, "%02u:%02u:%02u.%06lu",
+			tm.tm_hour,
+			tm.tm_min,
+			tm.tm_sec,
+			(unsigned long)timeval.tv_usec);
+}
+
 static inline void dump(FILE *f, /*const*/ char *del)
 {
 	char buf[MAXBUF];
+	char tstamp_buf[20];
 
 	struct iovec iov[] = {
+		{tstamp_buf, 0},
 		{del, strlen(del)},
 		{buf, 0} };
 
 	while (fgets(buf, sizeof(buf), f) != NULL) {
-		iov[1].iov_len = strlen(buf);
+		iov[0].iov_len = fmt_tstamp(tstamp_buf, sizeof(tstamp_buf));
+		iov[2].iov_len = strlen(buf);
 
-		write_all(iov, 2);
+		write_all(iov, 3);
 	}
 }
 
