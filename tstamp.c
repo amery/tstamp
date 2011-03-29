@@ -19,6 +19,8 @@
 
 #include "tstamp.h"
 
+static struct tm *(*gen_tm)(const time_t *, struct tm *);
+
 static inline void write_all(struct iovec *iov, int iovcnt)
 {
 	while (iovcnt > 0) {
@@ -48,7 +50,7 @@ static size_t fmt_tstamp(char *buf, size_t buf_len)
 	struct tm tm;
 
 	gettimeofday(&timeval, NULL);
-	localtime_r(&timeval.tv_sec, &tm);
+	gen_tm(&timeval.tv_sec, &tm);
 
 	return snprintf(buf, buf_len, "%02u:%02u:%02u.%06lu",
 			tm.tm_hour,
@@ -78,8 +80,9 @@ static inline void dump(FILE *f, /*const*/ char *del)
 int main(int argc, char **argv)
 {
 	int opt;
+	gen_tm = gmtime_r;
 
-	while ((opt = getopt(argc, argv, "?V")) != -1) {
+	while ((opt = getopt(argc, argv, "?Vl")) != -1) {
 		switch (opt) {
 		case 'V':
 			fputs("tstamp v" VERSION " <" HOME ">\n"
@@ -87,6 +90,9 @@ int main(int argc, char **argv)
 			      "Copyright (c) 2011, Alejandro Mery <amery@geeks.cl>\n",
 			      stderr);
 			return 0;
+		case 'l':
+			gen_tm = localtime_r;
+			break ;
 		default:
 			fprintf(stderr,
 				"tstamp v" VERSION "\n" DESCRIPTION "\n\n"
