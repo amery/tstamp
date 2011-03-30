@@ -19,8 +19,14 @@
 
 #include "tstamp.h"
 
+#define FMT_SHOW_TIME		(1 << 0)
+#define FMT_SHOW_DATE		(1 << 1)
+
+#define FMT_DATE	"%04u-%02u-%02u %02u:%02u:%02u.%06u"
+#define FMT_TIME	(FMT_DATE + 15)
+
 static struct tm *(*gen_tm)(const time_t *, struct tm *);
-static size_t (*fmt_tstamp)(char *, size_t);
+static size_t (*fmt_tstamp)(char *, size_t, time_t, suseconds_t);
 
 static inline void write_all(struct iovec *iov, int iovcnt)
 {
@@ -45,25 +51,38 @@ static inline void write_all(struct iovec *iov, int iovcnt)
 	}
 }
 
-static size_t fmt_tstamp_time(char *buf, size_t buf_len)
+static size_t fmt_tstamp_decimal(char *buf, size_t buf_len, time_t sec, suseconds_t usec)
 {
-	struct timeval timeval;
+	return snprintf(buf, buf_len, "%u.%06u",
+			(unsigned)sec,
+			(unsigned)usec);
+}
+
+static size_t fmt_tstamp_date(char *buf, size_t buf_len, time_t sec, suseconds_t usec)
+{
 	struct tm tm;
+	gen_tm(&sec, &tm);
 
-	gettimeofday(&timeval, NULL);
-	gen_tm(&timeval.tv_sec, &tm);
+	return snprintf(buf, buf_len, FMT_DATE,
+			1900+tm.tm_year, 1+tm.tm_mon, tm.tm_mday,
+			tm.tm_hour, tm.tm_min, tm.tm_sec,
+			(unsigned)usec);
+}
 
-	return snprintf(buf, buf_len, "%02u:%02u:%02u.%06lu",
-			tm.tm_hour,
-			tm.tm_min,
-			tm.tm_sec,
-			(unsigned long)timeval.tv_usec);
+static size_t fmt_tstamp_time(char *buf, size_t buf_len, time_t sec, suseconds_t usec)
+{
+	struct tm tm;
+	gen_tm(&sec, &tm);
+
+	return snprintf(buf, buf_len, FMT_TIME,
+			tm.tm_hour, tm.tm_min, tm.tm_sec,
+			(unsigned)usec);
 }
 
 static inline void dump(FILE *f, /*const*/ char *del)
 {
 	char buf[MAXBUF];
-	char tstamp_buf[20];
+	char tstamp_buf[32];
 
 	struct iovec iov[] = {
 		{tstamp_buf, 0},
@@ -71,7 +90,12 @@ static inline void dump(FILE *f, /*const*/ char *del)
 		{buf, 0} };
 
 	while (fgets(buf, sizeof(buf), f) != NULL) {
-		iov[0].iov_len = fmt_tstamp(tstamp_buf, sizeof(tstamp_buf));
+		struct timeval timeval;
+		gettimeofday(&timeval, NULL);
+
+		iov[0].iov_len = fmt_tstamp(tstamp_buf, sizeof(tstamp_buf),
+					    timeval.tv_sec,
+					    timeval.tv_usec);
 		iov[2].iov_len = strlen(buf);
 
 		write_all(iov, 3);
@@ -82,11 +106,11 @@ int main(int argc, char **argv)
 {
 	int opt;
 	char *del = ": ";
+	unsigned flag = 0;
 
 	gen_tm = gmtime_r;
-	fmt_tstamp = fmt_tstamp_time;
 
-	while ((opt = getopt(argc, argv, "?Vld:")) != -1) {
+	while ((opt = getopt(argc, argv, "?VltTd:")) != -1) {
 		switch (opt) {
 		case 'V':
 			fputs("tstamp v" VERSION " <" HOME ">\n"
@@ -96,6 +120,11 @@ int main(int argc, char **argv)
 			return 0;
 		case 'l':
 			gen_tm = localtime_r;
+		case 't':
+			flag |= FMT_SHOW_TIME;
+			break;
+		case 'T':
+			flag |= FMT_SHOW_DATE;
 			break;
 		case 'd':
 			del = optarg;
@@ -103,14 +132,23 @@ int main(int argc, char **argv)
 		default:
 			fprintf(stderr,
 				"tstamp v" VERSION "\n" DESCRIPTION "\n\n"
-				"Usage: %s [-V] [-l] [-d <del>]\n\n"
+				"Usage: %s [-V] [-ltT] [-d <del>]\n\n"
 				"  -V   print version and exit\n"
 				"  -d   delimiter (default: \": \")\n"
+				"  -t   show time\n"
+				"  -T   show date and time\n"
 				"  -l   use localtime instead of GMT/UTC/Z\n",
 				argv[0]);
 			return 1;
 		}
 	}
+
+	if (flag & FMT_SHOW_DATE)
+		fmt_tstamp = fmt_tstamp_date;
+	else if (flag & FMT_SHOW_TIME)
+		fmt_tstamp = fmt_tstamp_time;
+	else
+		fmt_tstamp = fmt_tstamp_decimal;
 
 	dump(stdin, del);
 	return 0;
